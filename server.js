@@ -17,8 +17,13 @@ app.get('/', (req, res) => {
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
-    socket.on('message', (msg) => {
-        io.emit('message', msg); // Gửi tin nhắn đến tất cả client
+    socket.on('message', (data) => {
+        const messageData = {
+            username: data.username || 'Anonymous',
+            message: data.message,
+            timestamp: new Date().toISOString()
+        };
+        io.emit('message', messageData); // Gửi tin nhắn đến tất cả client
     });
     socket.on('disconnect', () => {
         console.log('A user disconnected:', socket.id);
