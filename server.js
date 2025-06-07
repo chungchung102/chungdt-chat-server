@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ['https://chungdt-front-end.onrender.com', 'https://www.chungdt.tk'], // Giới hạn CORS
+        origin: ['https://chungdt-front-end.onrender.com/', 'https://www.chungdt.tk'], // Giới hạn CORS
         methods: ['GET', 'POST']
     }
 });
