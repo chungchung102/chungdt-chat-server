@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const NodeCache = require('node-cache');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args)); // để dùng fetch trong Node
+const fetch = require('node-fetch'); // ✅ Đã sửa: Dùng require thay vì import()
 
 const app = express();
 const server = http.createServer(app);
@@ -29,9 +29,12 @@ app.get('/', (req, res) => {
 
 // 🔁 YouTube API + Cache
 const cache = new NodeCache({ stdTTL: 600 });
+
+// ✅ API key gán trực tiếp (bạn tự chịu trách nhiệm bảo mật)
+const apiKey = 'AIzaSyC7hCmE_c1V4FfO1li5S_nzMn9xqOcad8U';
+
 app.get('/search-youtube', async (req, res) => {
     const query = req.query.q;
-    const apiKey = 'AIzaSyC7hCmE_c1V4FfO1li5S_nzMn9xqOcad8U';
     if (!query || !apiKey) {
         return res.status(400).json({ error: 'Missing query or API key' });
     }
@@ -44,17 +47,20 @@ app.get('/search-youtube', async (req, res) => {
     }
 
     try {
-        console.log(`Fetching from API for query: ${query}`);
-        const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${apiKey}`);
+        console.log(`Fetching from YouTube API for query: ${query}`);
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${apiKey}`;
+        const response = await fetch(url);
         const data = await response.json();
+
         if (response.ok) {
             cache.set(cacheKey, data);
             res.json(data);
         } else {
-            res.status(response.status).json({ error: data.error.message });
+            console.error('YouTube API error:', data.error);
+            res.status(response.status).json({ error: data.error?.message || 'Unknown error' });
         }
     } catch (error) {
-        console.error('Error fetching YouTube data:', error);
+        console.error('Fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch YouTube data' });
     }
 });
