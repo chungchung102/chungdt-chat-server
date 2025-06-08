@@ -1,13 +1,14 @@
 {
-    "name": "chungdt-backend",
-    "version": "1.0.0",
-    "scripts": {
-        "start": "node server.js"
-    },
-    "dependencies": {
-        "express": "^4.17.1",
-        "socket.io": "^4.5.0",
-        "cors": "^2.8.5",
-        "node-cache": "^5.1.2"
-    }
+  "name": "chungdt-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^4.5.0",
+    "cors": "^2.8.5",
+    "node-cache": "^5.1.2",
+    "node-fetch": "^2.6.7"
+  }
 }
