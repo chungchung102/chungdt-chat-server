@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 const cache = new NodeCache({ stdTTL: 600 });
 app.get('/search-youtube', async (req, res) => {
     const query = req.query.q;
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    const apiKey = 'AIzaSyC7hCmE_c1V4FfO1li5S_nzMn9xqOcad8U';
     if (!query || !apiKey) {
         return res.status(400).json({ error: 'Missing query or API key' });
     }
