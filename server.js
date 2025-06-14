@@ -82,6 +82,134 @@ io.on('connection', (socket) => {
         console.log('A user disconnected:', socket.id);
     });
 });
+// Caro game logic
+const games = {};
+const BOARD_SIZE = 15;
+
+function createNewGame() {
+    const board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+    return {
+        players: {},
+        board,
+        currentTurn: null,
+        moveCount: 0
+    };
+}
+
+function checkWin(board, row, col, symbol) {
+    const directions = [
+        [[0, 1], [0, -1]], // Horizontal
+        [[1, 0], [-1, 0]], // Vertical
+        [[1, 1], [-1, -1]], // Diagonal
+        [[1, -1], [-1, 1]]  // Anti-diagonal
+    ];
+
+    for (const [dir1, dir2] of directions) {
+        let count = 1;
+        for (const [dr, dc] of [dir1, dir2]) {
+            let r = row + dr, c = col + dc;
+            while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === symbol) {
+                count++;
+                r += dr;
+                c += dc;
+            }
+        }
+        if (count >= 5) return true;
+    }
+    return false;
+}
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    socket.on('message', (data) => {
+        const messageData = {
+            username: data.username || 'Anonymous',
+            message: data.message,
+            timestamp: data.timestamp || new Date().toISOString()
+        };
+        io.emit('message', messageData);
+    });
+
+    socket.on('joinGame', (data) => {
+        let gameId = Object.keys(games).find(id => Object.keys(games[id].players).length < 2);
+        if (!gameId) {
+            gameId = Date.now().toString();
+            games[gameId] = createNewGame();
+        }
+
+        games[gameId].players[socket.id] = Object.keys(games[gameId].players).length === 0 ? 'X' : 'O';
+        socket.join(gameId);
+        if (Object.keys(games[gameId].players).length === 2) {
+            games[gameId].currentTurn = Object.keys(games[gameId].players)[0];
+        }
+        io.to(gameId).emit('gameState', games[gameId]);
+    });
+
+    socket.on('makeMove', ({ row, col }) => {
+        const gameId = Object.keys(games).find(id => games[id].players[socket.id]);
+        if (!gameId || games[gameId].currentTurn !== socket.id || games[gameId].board[row][col]) return;
+
+        const symbol = games[gameId].players[socket.id];
+        games[gameId].board[row][col] = symbol;
+        games[gameId].moveCount++;
+
+        if (checkWin(games[gameId].board, row, col, symbol)) {
+            io.to(gameId).emit('gameOver', { winner: symbol });
+            delete games[gameId];
+        } else if (games[gameId].moveCount === BOARD_SIZE * BOARD_SIZE) {
+            io.to(gameId).emit('gameOver', { winner: null });
+            delete games[gameId];
+        } else {
+            games[gameId].currentTurn = Object.keys(games[gameId].players).find(id => id !== socket.id);
+            io.to(gameId).emit('gameState', games[gameId]);
+        }
+    });
+
+    socket.on('newGame', () => {
+        const gameId = Object.keys(games).find(id => games[id].players[socket.id]);
+        if (gameId) {
+            games[gameId] = createNewGame();
+            games[gameId].players = { [socket.id]: games[gameId].players[socket.id] };
+            socket.join(gameId);
+            io.to(gameId).emit('gameState', games[gameId]);
+        }
+    });
+
+    socket.on('resign', () => {
+        const gameId = Object.keys(games).find(id => games[id].players[socket.id]);
+        if (gameId) {
+            const winner = Object.keys(games[gameId].players).find(id => id !== socket.id);
+            io.to(gameId).emit('gameOver', { winner: games[gameId].players[winner] });
+            delete games[gameId];
+        }
+    });
+
+    socket.on('quitGame', () => {
+        const gameId = Object.keys(games).find(id => games[id].players[socket.id]);
+        if (gameId) {
+            delete games[gameId].players[socket.id];
+            io.to(gameId).emit('gameOver', { winner: null });
+            if (Object.keys(games[gameId].players).length === 0) {
+                delete games[gameId];
+            } else {
+                io.to(gameId).emit('gameState', games[gameId]);
+            }
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('A user disconnected:', socket.id);
+        const gameId = Object.keys(games).find(id => games[id].players[socket.id]);
+        if (gameId) {
+            delete games[gameId].players[socket.id];
+            io.to(gameId).emit('gameOver', { winner: null });
+            if (Object.keys(games[gameId].players).length === 0) {
+                delete games[gameId];
+            }
+        }
+    });
+});
 
 // 🚪 Port cho Render
 const PORT = process.env.PORT || 3000;
